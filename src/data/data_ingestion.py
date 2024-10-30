@@ -10,5 +10,5 @@ def read_data(filepath: Path):
     return raw_text
 
 
-nif __name__ == "__main__":
+if __name__ == "__main__":
     data = read_data(Path(__file__).parents[2] / "resources" / "verdict.txt")
