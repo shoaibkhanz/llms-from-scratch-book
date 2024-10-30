@@ -1,0 +1,16 @@
+[project]
+name = "llms-from-scratch"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "better-exceptions>=0.3.3",
+    "ipython>=8.28.0",
+    "jupyterlab>=4.2.5",
+    "matplotlib>=3.9.2",
+    "numpy>=2.1.2",
+    "pandas>=2.2.3",
+    "polars>=1.9.0",
+    "torch>=2.5.0",
+]
