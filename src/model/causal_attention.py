@@ -4,6 +4,7 @@ import torch.nn as nn
 from pathlib import Path
 import matplotlib.pyplot as plt
 import polars as pl
+import tiktoken
 
 inputs = torch.tensor(
     [
@@ -110,6 +111,38 @@ print(context_vectors)
 torch.cat((inputs[:, 1], inputs[:, 2]))
 
 
+class GPTDatasetV1(nn.Module):
+    def __init__(self, text, tokeniser, max_length, stride):
+        super().__init__()
+        self.inputs = []
+        self.targets = []
+
+        token_ids = tokeniser.encode(text, allowed_special={"<|endoftext|>"})
+        # token ids is the full length of the document or sentence,
+        # but during the each forward pass we pass a subset of it, thats is what max_length reprpesents here.
+        for i in range(0, len(token_ids) - max_length, stride):
+            # this make sure that we start with 0: 0+max_length and so on
+            input_chunks = token_ids[i : i + max_length]
+            # since this is the target, we need it to move by 1 token and thus it ends one token ahead.
+            target_chunks = token_ids[i + 1 : (i + 1) + max_length]
+
+            self.inputs.append(input_chunks)
+            self.target.append(target_chunks)
+
+    def __len__(self):
+        return len(self.inputs, self.targets)
+
+    def __getitem__(self, idx):
+        return self.inputs[idx], self.targets[idx]
+
+
+def create_dataloader(dataset, batch_size, shuffle, max_length=256, stride=128):
+    tokeniser = tiktoken.get_encoding("gpt2")
+    dataset = GPTDatasetV1(dataset, tokeniser, max_length, stride)
+    dataloader = DataLoader(dataset, batch_size, shuffle)
+    return dataloader
+
+
 class MultiHeadAttentionWrapper(nn.Module):
     def __init__(self, d_in, d_out, context_length, dropout, num_heads):
         super().__init__()
@@ -140,7 +173,9 @@ print(batch.shape)
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_int, d_out, context_length, dropout, num_heads, qkv_bias):
+    def __init__(
+        self, d_int, d_out, context_length, dropout, num_heads, qkv_bias=False
+    ):
         super().__init__()
         self.d_out = d_out
         self.context_length = context_length
@@ -167,6 +202,7 @@ class MultiHeadAttention(nn.Module):
         keys = self.wk(x)
         values = self.wv(x)
 
+        # before this point we have (b,num_tokens,embedding_dimensions)
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
         keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
         values = values.view(b, num_tokens, self.num_heads, self.head_dim)
@@ -181,12 +217,29 @@ class MultiHeadAttention(nn.Module):
             1, 2
         )  # (b, num_tokens, num_heads, head_dim) -> (b, num_heads, num_tokens, head_dim)
 
-        attention_scores = queries @ keys.transpose(2, 3)
-        masked_attn = attention_scores.masked_fill(mask, -torch.inf)
+        attention_scores = queries @ keys.transpose(
+            2, 3
+        )  # (num_tokens x head_dim) (head_dim, num_tokens) -> (b, num_heads,num_tokens, num_tokens)
+        mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
+        masked_attn = attention_scores.masked_fill(mask_bool, -torch.inf)
+        attention_weights = torch.softmax(masked_attn / keys.shape[-1] ** 0.5, dim=-1)
+        attention_weights = self.dropout(attention_weights)
+        context_vectors = (attention_weights @ values).transpose(1, 2)
+        # (num_tokens x num_tokens) (num_tokens, head_dim) -> (b, num_heads,num_tokens, head_dim) -> (b, num_tokens, num_heads, head_dim)
+        context_vectors = context_vectors.contiguous().view(b, num_tokens, self.d_out)
+        context_vectors = self.out_proj(context_vectors)
+        return context_vectors
 
 
-torch.manual_seed(42)
-t1 = torch.randn((3, 3))
-t2 = torch.randn((4, 3))
-print(t1)
-print(t2)
+torch.manual_seed(123)
+b, max_length, output_dim = batch.shape
+print(batch.shape)
+context_length = max_length
+d_in = output_dim
+d_out = d_in
+print(d_out)
+
+mha = MultiHeadAttention(d_in, d_out, context_length, 0.0, num_heads=2)
+cv = mha(batch)
+print(cv)
+print(cv.shape)
