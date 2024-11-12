@@ -126,20 +126,20 @@ class GPTDatasetV1(nn.Module):
             # since this is the target, we need it to move by 1 token and thus it ends one token ahead.
             target_chunks = token_ids[i + 1 : (i + 1) + max_length]
 
-            self.inputs.append(input_chunks)
-            self.target.append(target_chunks)
+            self.inputs.append(torch.tensor(input_chunks))
+            self.targets.append(torch.tensor(target_chunks))
 
     def __len__(self):
-        return len(self.inputs, self.targets)
+        return len(self.inputs)
 
     def __getitem__(self, idx):
         return self.inputs[idx], self.targets[idx]
 
 
-def create_dataloader(dataset, batch_size, shuffle, max_length=256, stride=128):
+def create_dataloader(text, batch_size, max_length=256, stride=128, shuffle=False):
     tokeniser = tiktoken.get_encoding("gpt2")
-    dataset = GPTDatasetV1(dataset, tokeniser, max_length, stride)
-    dataloader = DataLoader(dataset, batch_size, shuffle)
+    dataset = GPTDatasetV1(text, tokeniser, max_length, stride)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     return dataloader
 
 
@@ -173,14 +173,12 @@ print(batch.shape)
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(
-        self, d_int, d_out, context_length, dropout, num_heads, qkv_bias=False
-    ):
+    def __init__(self, d_in, d_out, context_length, dropout, num_heads, qkv_bias=False):
         super().__init__()
         self.d_out = d_out
         self.context_length = context_length
         self.num_heads = num_heads
-        self.dropout = nn.Dropout(0.0)
+        self.dropout = nn.Dropout(dropout)
         self.wq = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.wk = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.wv = nn.Linear(d_in, d_out, bias=qkv_bias)
@@ -202,7 +200,7 @@ class MultiHeadAttention(nn.Module):
         keys = self.wk(x)
         values = self.wv(x)
 
-        # before this point we have (b,num_tokens,embedding_dimensions)
+        # before this point we have (b,num_tokens,d_out)
         queries = queries.view(b, num_tokens, self.num_heads, self.head_dim)
         keys = keys.view(b, num_tokens, self.num_heads, self.head_dim)
         values = values.view(b, num_tokens, self.num_heads, self.head_dim)
@@ -226,20 +224,59 @@ class MultiHeadAttention(nn.Module):
         attention_weights = self.dropout(attention_weights)
         context_vectors = (attention_weights @ values).transpose(1, 2)
         # (num_tokens x num_tokens) (num_tokens, head_dim) -> (b, num_heads,num_tokens, head_dim) -> (b, num_tokens, num_heads, head_dim)
+        # operations like transpose, slicing etc can alter how the data is stored, as it may then consists of pointers
+        # for better management. However for view we need the data to be in contigious form and thus we need to do as below.
         context_vectors = context_vectors.contiguous().view(b, num_tokens, self.d_out)
+        # the following projection , takes the context vector to learn higher dimension parameters and bring it back to the original scale.
         context_vectors = self.out_proj(context_vectors)
         return context_vectors
 
 
-torch.manual_seed(123)
-b, max_length, output_dim = batch.shape
-print(batch.shape)
-context_length = max_length
-d_in = output_dim
-d_out = d_in
-print(d_out)
+# torch.manual_seed(123)
+# b, max_length, output_dim = batch.shape
+# print(batch.shape)
+# context_length = max_length
+# d_in = output_dim
+# d_out = d_in
+# print(d_out)
 
-mha = MultiHeadAttention(d_in, d_out, context_length, 0.0, num_heads=2)
-cv = mha(batch)
-print(cv)
-print(cv.shape)
+# mha = MultiHeadAttention(d_in, d_out, context_length, 0.0, num_heads=2)
+# cv = mha(batch)
+# print(cv)
+# print(cv.shape)
+
+if __name__ == "__main__":
+
+    vocab_size = 50257
+    d_model = 256
+    max_length = 1024
+
+    with open("resources/verdict.txt") as f:
+        text = f.read()
+    tokeniser = tiktoken.get_encoding("gpt2")
+    dataloader = create_dataloader(
+        text, batch_size=1, max_length=max_length, shuffle=False
+    )
+
+    token_embeddings_layer = nn.Embedding(vocab_size, d_model)
+    positional_embeddings_layer = nn.Embedding(max_length, d_model)
+
+    for batch in dataloader:
+        inputs, targets = batch
+        token_embeddings = token_embeddings_layer(inputs)
+        # this positional encoding is just simply an embedding
+        positional_embeddings = positional_embeddings_layer(torch.arange(max_length))
+        input_embeddings = token_embeddings + positional_embeddings
+
+        mha = MultiHeadAttention(
+            d_in=d_model,
+            d_out=d_model,
+            context_length=max_length,
+            dropout=0.0,
+            num_heads=2,
+        )
+        batch = input_embeddings
+        context_vec = mha(batch)
+
+    print(input_embeddings.shape)
+    print(context_vec.shape)
