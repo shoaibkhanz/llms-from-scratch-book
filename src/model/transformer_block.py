@@ -4,13 +4,13 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 CONFIG = {
-    "vocab_size": 50257,  # this is the size of the full text, for english language, this would be all the words in english
-    "context_length": 1024,  # this represents the length of text passed in each batch
-    "emb_dim": 768,  # this is the embedding size of the model, the paper calls this d_model
-    "n_heads": 12,  # number of splits of d_model across the text input
-    "n_layers": 12,  # number of layers for encoder ,decoder blocks
-    "drop_rate": 0.1,  # the dropout rate, to ensure the models is able to generalise
-    "qkv_bias": False,  # query-key-value bias
+    "vocab_size": 50257,  # Size of the vocabulary used by the model
+    "context_length": 1024,  # Maximum length of input sequences
+    "emb_dim": 768,  # Dimensionality of the model's embeddings (d_model)
+    "n_heads": 12,  # Number of attention heads in the multi-head attention mechanism
+    "n_layers": 12,  # Number of transformer layers in the model
+    "drop_rate": 0.1,  # Dropout rate for regularization
+    "qkv_bias": False,  # Whether to include bias terms in the query, key, and value projections
 }
 
 
@@ -338,3 +338,55 @@ total_gpt2_parameters = total_parameters - sum(
     p.numel() for p in model.result_layer.parameters()
 )
 print(total_gpt2_parameters)
+
+
+# lets use the gpt-2 large model with a new config
+GPT2_medium_config = {
+    "vocab_size": 50257,  # Size of the vocabulary used by the model
+    "context_length": 1024,  # Maximum length of input sequences
+    "emb_dim": 1024,  # Dimensionality of the model's embeddings (d_model)
+    "n_heads": 16,  # Number of attention heads in the multi-head attention mechanism
+    "n_layers": 24,  # Number of transformer layers in the model
+    "drop_rate": 0.1,  # Dropout rate for regularization
+    "qkv_bias": False,  # Whether to include bias terms in the query, key, and value projections
+}
+
+
+torch.manual_seed(123)
+gpt_med = GPTModel_v2(GPT2_medium_config)
+out = gpt_med(batch)
+out.shape
+
+total_med_parameters = sum(p.numel() for p in gpt_med.parameters())
+print(total_med_parameters)
+total_gpt2_med_params = total_med_parameters - sum(
+    p.numel() for p in gpt_med.result_layer.parameters()
+)
+print(total_gpt2_med_params)
+
+
+# generating text
+def generate_test_simple(model, idx, max_new_token, context_size):
+    for _ in range(max_new_token):
+        idx_cond = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(idx_cond)
+
+        logits = logits[:, -1, :]
+        probas = torch.softmax(logits, dim=-1)
+        idx_next = torch.argmax(probas, dim=-1, keepdim=True)
+        idx = torch.cat([idx, idx_next], dim=1)
+    return idx
+
+
+start_context = "Hello, I am"
+encoded = tokenizer.encode(start_context)
+print(encoded)
+encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+print(encoded_tensor)
+
+
+model.eval()
+out = generate_test_simple(model, encoded_tensor, 6, CONFIG["context_length"])
+print(out)
+tokenizer.decode(out)
