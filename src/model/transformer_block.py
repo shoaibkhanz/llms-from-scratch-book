@@ -366,7 +366,7 @@ print(total_gpt2_med_params)
 
 
 # generating text
-def generate_test_simple(model, idx, max_new_token, context_size):
+def generate_text_simple(model, idx, max_new_token, context_size):
     for _ in range(max_new_token):
         idx_cond = idx[:, -context_size:]
         with torch.no_grad():
@@ -387,6 +387,46 @@ print(encoded_tensor)
 
 
 model.eval()
-out = generate_test_simple(model, encoded_tensor, 6, CONFIG["context_length"])
+out = generate_text_simple(model, encoded_tensor, 6, CONFIG["context_length"])
 print(out)
-tokenizer.decode(out)
+print(out.shape)
+
+tokenizer.decode(out.squeeze(0).tolist())
+
+
+GPT2_small_config = {
+    "vocab_size": 50257,  # Size of the vocabulary used by the model
+    "context_length": 1024,  # Maximum length of input sequences
+    "emb_dim": 256,  # Dimensionality of the model's embeddings (d_model)
+    "n_heads": 16,  # Number of attention heads in the multi-head attention mechanism
+    "n_layers": 24,  # Number of transformer layers in the model
+    "drop_rate": 0.1,  # Dropout rate for regularization
+    "qkv_bias": False,  # Whether to include bias terms in the query, key, and value projections
+}
+
+text = start_context
+
+
+def token_to_ids(text, tokenizer: tiktoken.Encoding):
+    encoded_text = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
+    encoded_tensor = torch.tensor(encoded_text).unsqueeze(0)
+    return encoded_tensor
+
+
+# token_ids = token_to_ids(text,tokenizer)
+# token_ids.shape
+
+
+def ids_to_token(token_ids: torch.Tensor, tokenizer: tiktoken.Encoding):
+    return tokenizer.decode(token_ids.squeeze(0).tolist())
+
+
+model = GPTModel_v2(GPT2_small_config)
+model.eval()
+res_text = generate_text_simple(
+    model,
+    idx=token_to_ids(text1, tokenizer),
+    max_new_token=10,
+    context_size=GPT2_small_config["context_length"],
+)
+print(ids_to_token(res_text, tokenizer))
