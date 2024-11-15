@@ -2,6 +2,7 @@ import torch
 import tiktoken
 import torch.nn as nn
 import matplotlib.pyplot as plt
+from src.model.causal_attention import MultiHeadAttention
 
 CONFIG = {
     "vocab_size": 50257,  # Size of the vocabulary used by the model
@@ -242,8 +243,6 @@ CONFIG = {
     "drop_rate": 0.1,  # the dropout rate, to ensure the models is able to generalise
     "qkv_bias": False,  # query-key-value bias
 }
-
-from src.model.causal_attention import MultiHeadAttention
 
 
 class GPTModel_v2(nn.Module):
