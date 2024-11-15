@@ -111,7 +111,7 @@ print(context_vectors)
 torch.cat((inputs[:, 1], inputs[:, 2]))
 
 
-class GPTDatasetV1(nn.Module):
+class GPTDatasetV1(Dataset):
     def __init__(self, text, tokeniser, max_length, stride):
         super().__init__()
         self.inputs = []
@@ -215,8 +215,8 @@ class MultiHeadAttention(nn.Module):
             1, 2
         )  # (b, num_tokens, num_heads, head_dim) -> (b, num_heads, num_tokens, head_dim)
 
-        attention_scores = queries @ keys.transpose(
-            2, 3
+        attention_scores = (
+            queries @ keys.transpose(2, 3)
         )  # (num_tokens x head_dim) (head_dim, num_tokens) -> (b, num_heads,num_tokens, num_tokens)
         mask_bool = self.mask.bool()[:num_tokens, :num_tokens]
         masked_attn = attention_scores.masked_fill(mask_bool, -torch.inf)
@@ -246,7 +246,6 @@ class MultiHeadAttention(nn.Module):
 # print(cv.shape)
 
 if __name__ == "__main__":
-
     vocab_size = 50257
     d_model = 256
     max_length = 1024
