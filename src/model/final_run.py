@@ -224,7 +224,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(123)
 model = GPTModel_v2(GPT2_small_config)
 model.to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001, weight_decay=0.1)
+optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
