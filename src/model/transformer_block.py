@@ -305,7 +305,7 @@ class LayerNorm(nn.Module):
     def __init__(self, emb_dim):
         super().__init__()
         self.emb_dim = emb_dim
-        self.eps = 1e6
+        self.eps = 1e-5
         self.scale = nn.Parameter(torch.ones(self.emb_dim))
         self.shift = nn.Parameter(torch.zeros(self.emb_dim))
 

@@ -3,6 +3,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from src.model.transformer_block import GPTModel_v2
+import matplotlib.pyplot as plt
 
 
 class GPTDataset(Dataset):
@@ -178,6 +179,17 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     model.train()
 
 
+def plot_losses(train_losses, valid_losses, tokens_seen, epoch_seen):
+    fig, ax1 = plt.subplots(figsize=(5, 1))
+    ax1.plot(epoch_seen, train_losses, label="training data")
+    ax1.plot(epoch_seen, valid_losses, label="validation data")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Loss")
+    ax2 = ax1.twiny()
+    ax2.plot(tokens_seen, train_losses, alpha=0)
+    plt.show()
+
+
 GPT2_small_config = {
     "vocab_size": 50257,  # Vocabulary size
     "context_length": 256,  # Shortened context length (orig: 1024)
@@ -260,3 +272,8 @@ train_losses, val_losses, tokens_seen = train_model_simple(
     start_context="Every effort moves you",
     tokenizer=tokenizer,
 )
+
+print(len(train_losses))
+print(len(val_losses))
+print(len(tokens_seen))
+print(num_epochs)

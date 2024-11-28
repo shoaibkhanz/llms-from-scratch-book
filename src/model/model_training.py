@@ -1,9 +1,9 @@
 import tiktoken
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader, dataloader
+from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from src.model.transformer_block import GPTModel_v2
+import matplotlib.pyplot as plt
 
 
 class GPTDataset(Dataset):
@@ -215,6 +215,17 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     model.train()
 
 
+def plot_losses(train_losses, valid_losses, tokens_seen, epoch_seen):
+    fig, ax1 = plt.subplots(figsize=(5, 1))
+    ax1.plot(epoch_seen, train_losses, label="training data")
+    ax1.plot(epoch_seen, valid_losses, label="validation data")
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Loss")
+    ax2 = ax1.twiny()
+    ax2.plot(tokens_seen, train_losses, alpha=0)
+    plt.show()
+
+
 if __name__ == "__main__":
     GPT2_small_config = {
         "vocab_size": 50257,  # Size of the vocabulary used by the model
@@ -320,3 +331,5 @@ if __name__ == "__main__":
         start_context="Every effort moves you",
         tokenizer=tokenizer,
     )
+
+    plot_losses(train_losses, valid_losses, tokens_seen, num_epochs)
