@@ -273,7 +273,5 @@ train_losses, val_losses, tokens_seen = train_model_simple(
     tokenizer=tokenizer,
 )
 
-print(len(train_losses))
-print(len(val_losses))
-print(len(tokens_seen))
-print(num_epochs)
+epochs_seen = torch.linspace(0, num_epochs, len(train_losses))
+plot_losses(train_losses, val_losses, tokens_seen, epochs_seen)
