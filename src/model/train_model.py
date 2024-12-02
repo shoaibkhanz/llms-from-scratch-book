@@ -2,7 +2,7 @@ import tiktoken
 import torch
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
-from src.model.transformer_block import GPTModel_v2
+from src.model.transformer_block import CONFIG, GPTModel_v2
 import matplotlib.pyplot as plt
 
 
@@ -275,3 +275,16 @@ train_losses, val_losses, tokens_seen = train_model_simple(
 
 epochs_seen = torch.linspace(0, num_epochs, len(train_losses))
 plot_losses(train_losses, val_losses, tokens_seen, epochs_seen)
+
+
+model.to("cpu")
+model.eval()
+
+tokenizer = tiktoken.get_encoding("gpt2")
+token_ids = generate_text_simple(
+    model=model,
+    idx=text_to_token_ids("Every effort moves you", tokenizer),
+    max_new_tokens=25,
+    context_size=GPT2_small_config["context_length"],
+)
+print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
