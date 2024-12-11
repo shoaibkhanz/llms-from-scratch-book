@@ -1,5 +1,6 @@
 import tiktoken
 import torch
+from torch.return_types import topk
 from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 from src.model.transformer_block import CONFIG, GPTModel_v2
@@ -288,3 +289,65 @@ token_ids = generate_text_simple(
     context_size=GPT2_small_config["context_length"],
 )
 print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
+
+vocab = {
+    "closer": 0,
+    "every": 1,
+    "effort": 2,
+    "forward": 3,
+    "inches": 4,
+    "moves": 5,
+    "pizza": 6,
+    "toward": 7,
+    "you": 8,
+}
+
+inverse_vocab = {v: k for k, v in vocab.items()}
+
+next_token_logits = torch.tensor(
+    [4.51, 0.89, -1.90, 6.75, 1.63, -1.62, -1.89, 6.28, 1.79]
+)
+probas = torch.softmax(next_token_logits, dim=0)
+print(probas)
+torch.argmax(probas).item()
+print(inverse_vocab[3])
+
+torch.manual_seed(123)
+sample = [torch.multinomial(probas, num_samples=1).item() for i in range(1_000)]
+sampled_ids = torch.bincount(torch.tensor(sample))
+for i, freq in enumerate(sampled_ids):
+    print(f"{freq} x {inverse_vocab[i]}")
+
+
+def softmax_with_temperature(logits, temperature):
+    scaled_logits = logits / temperature
+    return torch.softmax(scaled_logits, dim=0)
+
+
+temperatures = [1, 0.1, 5]
+
+scaled_probas = [softmax_with_temperature(next_token_logits, t) for t in temperatures]
+
+len(scaled_probas)
+
+idx = text_to_token_ids("every efforts moves you", tokenizer=tokenizer)
+print(idx)
+context_size = 256
+next_tokens = idx[:, -context_size:]
+logits = model(next_tokens)
+torch.topk()
+
+
+def generate_text(
+    model, idx, max_new_tokens, context_size, temperature, top_k=None, eos_id=None
+):
+    max_new_tokens = 3
+    for _ in range(max_new_tokens):
+        next_tokens = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(next_tokens)
+        logits = logits[:, -1, :]
+        topk_logits = torch.topk(logits, k=3)
+        temp_scaled = topk_logits / temperature
+        probas = torch.softmax(temp_scaled, dim=2)
+        sample = torch.multinomial(probas, num_samples=1)
