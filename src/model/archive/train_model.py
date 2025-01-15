@@ -191,6 +191,21 @@ def plot_losses(train_losses, valid_losses, tokens_seen, epoch_seen):
     plt.show()
 
 
+def generate_text(
+    model, idx, max_new_tokens, context_size, temperature, top_k=None, eos_id=None
+):
+    max_new_tokens = 3
+    for _ in range(max_new_tokens):
+        next_tokens = idx[:, -context_size:]
+        with torch.no_grad():
+            logits = model(next_tokens)
+        logits = logits[:, -1, :]
+        topk_logits = torch.topk(logits, k=3)
+        temp_scaled = topk_logits / temperature
+        probas = torch.softmax(temp_scaled, dim=2)
+        sample = torch.multinomial(probas, num_samples=1)
+
+
 GPT2_small_config = {
     "vocab_size": 50257,  # Vocabulary size
     "context_length": 256,  # Shortened context length (orig: 1024)
@@ -211,143 +226,127 @@ GPT2_small_config = {
 #     "qkv_bias": False,  # Whether to include bias terms in the query, key, and value projections
 # }
 
-filepath = Path("resources/verdict.txt")
-with open(filepath, "r", encoding="utf-8") as f:
-    text = f.read()
+if __name__ == "__main__":
+    filepath = Path("resources/verdict.txt")
+    with open(filepath, "r", encoding="utf-8") as f:
+        text = f.read()
 
-total_characters = len(text)
-total_tokens = len(tiktoken.get_encoding("gpt2").encode(text))
+    total_characters = len(text)
+    total_tokens = len(tiktoken.get_encoding("gpt2").encode(text))
 
-print(total_characters)
-print(total_tokens)
-print(total_tokens * 0.9)
-print(total_tokens * 0.1)
+    print(total_characters)
+    print(total_tokens)
+    print(total_tokens * 0.9)
+    print(total_tokens * 0.1)
 
-train_ratio = 0.90
-split_idx = int(len(text) * train_ratio)
-train_data = text[:split_idx]
-val_data = text[split_idx:]
-batch_size = 2
-print(len(train_data))
-print(len(val_data))
+    train_ratio = 0.90
+    split_idx = int(len(text) * train_ratio)
+    train_data = text[:split_idx]
+    val_data = text[split_idx:]
+    batch_size = 2
+    print(len(train_data))
+    print(len(val_data))
 
+    # model trainning hasnt happened yet
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(123)
+    model = GPTModel_v2(GPT2_small_config)
+    model.to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
 
-# model trainning hasnt happened yet
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.manual_seed(123)
-model = GPTModel_v2(GPT2_small_config)
-model.to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.0004, weight_decay=0.1)
+    tokenizer = tiktoken.get_encoding("gpt2")
 
-tokenizer = tiktoken.get_encoding("gpt2")
+    train_loader = create_dataloader(
+        train_data,
+        GPT2_small_config["context_length"],
+        GPT2_small_config["context_length"],
+        batch_size=batch_size,
+        tokenizer=tokenizer,
+        shuffle=True,
+        drop_last=True,
+    )
+    val_loader = create_dataloader(
+        val_data,
+        GPT2_small_config["context_length"],
+        GPT2_small_config["context_length"],
+        batch_size=batch_size,
+        tokenizer=tokenizer,
+        shuffle=True,
+        drop_last=False,
+    )
+    num_epochs = 10
 
-train_loader = create_dataloader(
-    train_data,
-    GPT2_small_config["context_length"],
-    GPT2_small_config["context_length"],
-    batch_size=batch_size,
-    tokenizer=tokenizer,
-    shuffle=True,
-    drop_last=True,
-)
-val_loader = create_dataloader(
-    val_data,
-    GPT2_small_config["context_length"],
-    GPT2_small_config["context_length"],
-    batch_size=batch_size,
-    tokenizer=tokenizer,
-    shuffle=True,
-    drop_last=False,
-)
-num_epochs = 10
+    train_losses, val_losses, tokens_seen = train_model_simple(
+        model,
+        train_loader,
+        val_loader,
+        optimizer,
+        device,
+        num_epochs=num_epochs,
+        eval_freq=5,
+        eval_iter=5,
+        start_context="Every effort moves you",
+        tokenizer=tokenizer,
+    )
 
-train_losses, val_losses, tokens_seen = train_model_simple(
-    model,
-    train_loader,
-    val_loader,
-    optimizer,
-    device,
-    num_epochs=num_epochs,
-    eval_freq=5,
-    eval_iter=5,
-    start_context="Every effort moves you",
-    tokenizer=tokenizer,
-)
+    epochs_seen = torch.linspace(0, num_epochs, len(train_losses))
+    plot_losses(train_losses, val_losses, tokens_seen, epochs_seen)
 
-epochs_seen = torch.linspace(0, num_epochs, len(train_losses))
-plot_losses(train_losses, val_losses, tokens_seen, epochs_seen)
+    model.to("cpu")
+    model.eval()
 
+    tokenizer = tiktoken.get_encoding("gpt2")
+    token_ids = generate_text_simple(
+        model=model,
+        idx=text_to_token_ids("Every effort moves you", tokenizer),
+        max_new_tokens=25,
+        context_size=GPT2_small_config["context_length"],
+    )
+    print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
 
-model.to("cpu")
-model.eval()
+    vocab = {
+        "closer": 0,
+        "every": 1,
+        "effort": 2,
+        "forward": 3,
+        "inches": 4,
+        "moves": 5,
+        "pizza": 6,
+        "toward": 7,
+        "you": 8,
+    }
 
-tokenizer = tiktoken.get_encoding("gpt2")
-token_ids = generate_text_simple(
-    model=model,
-    idx=text_to_token_ids("Every effort moves you", tokenizer),
-    max_new_tokens=25,
-    context_size=GPT2_small_config["context_length"],
-)
-print("Output text:\n", token_ids_to_text(token_ids, tokenizer))
+    inverse_vocab = {v: k for k, v in vocab.items()}
 
-vocab = {
-    "closer": 0,
-    "every": 1,
-    "effort": 2,
-    "forward": 3,
-    "inches": 4,
-    "moves": 5,
-    "pizza": 6,
-    "toward": 7,
-    "you": 8,
-}
+    next_token_logits = torch.tensor(
+        [4.51, 0.89, -1.90, 6.75, 1.63, -1.62, -1.89, 6.28, 1.79]
+    )
+    probas = torch.softmax(next_token_logits, dim=0)
+    print(probas)
+    torch.argmax(probas).item()
+    print(inverse_vocab[3])
 
-inverse_vocab = {v: k for k, v in vocab.items()}
+    torch.manual_seed(123)
+    sample = [torch.multinomial(probas, num_samples=1).item() for i in range(1_000)]
+    sampled_ids = torch.bincount(torch.tensor(sample))
+    for i, freq in enumerate(sampled_ids):
+        print(f"{freq} x {inverse_vocab[i]}")
 
-next_token_logits = torch.tensor(
-    [4.51, 0.89, -1.90, 6.75, 1.63, -1.62, -1.89, 6.28, 1.79]
-)
-probas = torch.softmax(next_token_logits, dim=0)
-print(probas)
-torch.argmax(probas).item()
-print(inverse_vocab[3])
+    def softmax_with_temperature(logits, temperature):
+        scaled_logits = logits / temperature
+        return torch.softmax(scaled_logits, dim=0)
 
-torch.manual_seed(123)
-sample = [torch.multinomial(probas, num_samples=1).item() for i in range(1_000)]
-sampled_ids = torch.bincount(torch.tensor(sample))
-for i, freq in enumerate(sampled_ids):
-    print(f"{freq} x {inverse_vocab[i]}")
+    temperatures = [1, 0.1, 5]
 
+    scaled_probas = [
+        softmax_with_temperature(next_token_logits, t) for t in temperatures
+    ]
 
-def softmax_with_temperature(logits, temperature):
-    scaled_logits = logits / temperature
-    return torch.softmax(scaled_logits, dim=0)
+    len(scaled_probas)
 
-
-temperatures = [1, 0.1, 5]
-
-scaled_probas = [softmax_with_temperature(next_token_logits, t) for t in temperatures]
-
-len(scaled_probas)
-
-idx = text_to_token_ids("every efforts moves you", tokenizer=tokenizer)
-print(idx)
-context_size = 256
-next_tokens = idx[:, -context_size:]
-logits = model(next_tokens)
-torch.topk()
-
-
-def generate_text(
-    model, idx, max_new_tokens, context_size, temperature, top_k=None, eos_id=None
-):
-    max_new_tokens = 3
-    for _ in range(max_new_tokens):
-        next_tokens = idx[:, -context_size:]
-        with torch.no_grad():
-            logits = model(next_tokens)
-        logits = logits[:, -1, :]
-        topk_logits = torch.topk(logits, k=3)
-        temp_scaled = topk_logits / temperature
-        probas = torch.softmax(temp_scaled, dim=2)
-        sample = torch.multinomial(probas, num_samples=1)
+    idx = text_to_token_ids("every efforts moves you", tokenizer=tokenizer)
+    print(idx)
+    context_size = 256
+    next_tokens = idx[:, -context_size:]
+    logits = model(next_tokens)
+    torch.topk()

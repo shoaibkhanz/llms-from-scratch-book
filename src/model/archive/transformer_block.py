@@ -57,30 +57,30 @@ class DummyLayerNorm(nn.Module):
         return x
 
 
-tokenizer = tiktoken.get_encoding("gpt2")
-batch = []
-text1 = "Every effort moves you"
-text2 = "Every day holds a"
-
-batch.append(torch.tensor(tokenizer.encode(text1)))
-batch.append(torch.tensor(tokenizer.encode(text2)))
-batch = torch.stack(batch, dim=0)
-print(batch)
-
-torch.manual_seed(123)
-model = DummyGPTModel(CONFIG)
-logits = model(batch)
-
-# exploring layer normalisation
-
-torch.manual_seed(123)
-batch_example = torch.randn(2, 5)
-layer = nn.Sequential(nn.Linear(5, 6), nn.ReLU())
-out = layer(batch_example)
-print(out)
-
-out.mean(dim=-1, keepdim=True)
-out.var(dim=-1, keepdim=True)
+# tokenizer = tiktoken.get_encoding("gpt2")
+# batch = []
+# text1 = "Every effort moves you"
+# text2 = "Every day holds a"
+#
+# batch.append(torch.tensor(tokenizer.encode(text1)))
+# batch.append(torch.tensor(tokenizer.encode(text2)))
+# batch = torch.stack(batch, dim=0)
+# print(batch)
+#
+# torch.manual_seed(123)
+# model = DummyGPTModel(CONFIG)
+# logits = model(batch)
+#
+# # exploring layer normalisation
+#
+# torch.manual_seed(123)
+# batch_example = torch.randn(2, 5)
+# layer = nn.Sequential(nn.Linear(5, 6), nn.ReLU())
+# out = layer(batch_example)
+# print(out)
+#
+# out.mean(dim=-1, keepdim=True)
+# out.var(dim=-1, keepdim=True)
 
 
 # implementing layer normalisation
@@ -105,12 +105,13 @@ class LayerNorm(nn.Module):
         )  # scale and shift are trainable parameters
 
 
-layernorm = LayerNorm(emb_dim=5)
-out_norm = layernorm(batch_example)
-print(out_norm)
-
-print(out_norm.mean(dim=-1, keepdim=True))
-print(out_norm.var(dim=-1, unbiased=False, keepdim=True))
+# layernorm = LayerNorm(emb_dim=5)
+# out_norm = layernorm(batch_example)
+# print(out_norm)
+#
+# print(out_norm.mean(dim=-1, keepdim=True))
+# print(out_norm.var(dim=-1, unbiased=False, keepdim=True))
+#
 
 
 class GELU(nn.Module):
@@ -131,21 +132,22 @@ class GELU(nn.Module):
         )
 
 
-gelu, relu = GELU(), nn.ReLU()
-
-
-x = torch.linspace(-15, 15, 100)  # A
-y_gelu, y_relu = gelu(x), relu(x)
-plt.figure(figsize=(8, 3))
-for i, (y, label) in enumerate(zip([y_gelu, y_relu], ["GELU", "ReLU"]), 1):
-    plt.subplot(1, 2, i)
-    plt.plot(x, y)
-    plt.title(f"{label} activation function")
-    plt.xlabel("x")
-    plt.ylabel(f"{label}(x)")
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+# gelu, relu = GELU(), nn.ReLU()
+#
+#
+# x = torch.linspace(-15, 15, 100)  # A
+# y_gelu, y_relu = gelu(x), relu(x)
+# plt.figure(figsize=(8, 3))
+# for i, (y, label) in enumerate(zip([y_gelu, y_relu], ["GELU", "ReLU"]), 1):
+#     plt.subplot(1, 2, i)
+#     plt.plot(x, y)
+#     plt.title(f"{label} activation function")
+#     plt.xlabel("x")
+#     plt.ylabel(f"{label}(x)")
+#     plt.grid(True)
+#     plt.tight_layout()
+#     plt.show()
+#
 
 
 # Implementing FeedForwardModel
@@ -162,10 +164,11 @@ class FeedForward(nn.Module):
         return self.layers(x)
 
 
-ffn = FeedForward(CONFIG)
-rand_tensor = torch.rand((2, 3, 768))
-out = ffn(rand_tensor)
-print(out.shape)
+# ffn = FeedForward(CONFIG)
+# rand_tensor = torch.rand((2, 3, 768))
+# out = ffn(rand_tensor)
+# print(out.shape)
+#
 
 
 class ExampleDNN(nn.Module):
@@ -193,11 +196,11 @@ class ExampleDNN(nn.Module):
         return x
 
 
-layers = [3, 3, 3, 3, 3, 1]
-dnn = ExampleDNN(layers, True)
-
-sample_input = torch.tensor([[1.0, 0.0, -1.0]])
-dnn(sample_input)
+# layers = [3, 3, 3, 3, 3, 1]
+# dnn = ExampleDNN(layers, True)
+#
+# sample_input = torch.tensor([[1.0, 0.0, -1.0]])
+# dnn(sample_input)
 
 
 def print_gradients(model: ExampleDNN, data: torch.Tensor):
@@ -227,12 +230,12 @@ def print_gradients(model: ExampleDNN, data: torch.Tensor):
             )
 
 
-torch.manual_seed(123)
-model_noskip = ExampleDNN(layers, False)
-model_skip = ExampleDNN(layers, True)
-print_gradients(model_noskip, sample_input)
-print_gradients(model_skip, sample_input)
-
+# torch.manual_seed(123)
+# model_noskip = ExampleDNN(layers, False)
+# model_skip = ExampleDNN(layers, True)
+# print_gradients(model_noskip, sample_input)
+# print_gradients(model_skip, sample_input)
+#
 
 CONFIG = {
     "vocab_size": 50257,  # this is the size of the full text, for english language, this would be all the words in english
@@ -316,28 +319,28 @@ class LayerNorm(nn.Module):
         return (self.scale * norm) + self.shift
 
 
-torch.manual_seed(123)
-x = torch.rand(2, 4, 768)
-trans_block = TransformerBlock(cfg=CONFIG)
-transformer_out = trans_block(x)
-print(x.shape)
-print(transformer_out.shape)
-
-
-torch.manual_seed(123)
-model = GPTModel_v2(CONFIG)
-out = model(batch)
-out.shape
-
-
-total_parameters = sum(p.numel() for p in model.parameters())
-model.embedding_layer.weight.shape
-model.result_layer.weight.shape
-total_gpt2_parameters = total_parameters - sum(
-    p.numel() for p in model.result_layer.parameters()
-)
-print(total_gpt2_parameters)
-
+# torch.manual_seed(123)
+# x = torch.rand(2, 4, 768)
+# trans_block = TransformerBlock(cfg=CONFIG)
+# transformer_out = trans_block(x)
+# print(x.shape)
+# print(transformer_out.shape)
+#
+#
+# torch.manual_seed(123)
+# model = GPTModel_v2(CONFIG)
+# out = model(batch)
+# out.shape
+#
+#
+# total_parameters = sum(p.numel() for p in model.parameters())
+# model.embedding_layer.weight.shape
+# model.result_layer.weight.shape
+# total_gpt2_parameters = total_parameters - sum(
+#     p.numel() for p in model.result_layer.parameters()
+# )
+# print(total_gpt2_parameters)
+#
 
 # lets use the gpt-2 large model with a new config
 GPT2_medium_config = {
@@ -351,17 +354,18 @@ GPT2_medium_config = {
 }
 
 
-torch.manual_seed(123)
-gpt_med = GPTModel_v2(GPT2_medium_config)
-out = gpt_med(batch)
-out.shape
-
-total_med_parameters = sum(p.numel() for p in gpt_med.parameters())
-print(total_med_parameters)
-total_gpt2_med_params = total_med_parameters - sum(
-    p.numel() for p in gpt_med.result_layer.parameters()
-)
-print(total_gpt2_med_params)
+# torch.manual_seed(123)
+# gpt_med = GPTModel_v2(GPT2_medium_config)
+# out = gpt_med(batch)
+# out.shape
+#
+# total_med_parameters = sum(p.numel() for p in gpt_med.parameters())
+# print(total_med_parameters)
+# total_gpt2_med_params = total_med_parameters - sum(
+#     p.numel() for p in gpt_med.result_layer.parameters()
+# )
+# print(total_gpt2_med_params)
+#
 
 
 # generating text
@@ -378,21 +382,21 @@ def generate_text_simple(model, idx, max_new_token, context_size):
     return idx
 
 
-start_context = "Hello, I am"
-encoded = tokenizer.encode(start_context)
-print(encoded)
-encoded_tensor = torch.tensor(encoded).unsqueeze(0)
-print(encoded_tensor)
-
-
-model.eval()
-out = generate_text_simple(model, encoded_tensor, 6, CONFIG["context_length"])
-print(out)
-print(out.shape)
-
-tokenizer.decode(out.squeeze(0).tolist())
-
-
+# start_context = "Hello, I am"
+# encoded = tokenizer.encode(start_context)
+# print(encoded)
+# encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+# print(encoded_tensor)
+#
+#
+# model.eval()
+# out = generate_text_simple(model, encoded_tensor, 6, CONFIG["context_length"])
+# print(out)
+# print(out.shape)
+#
+# tokenizer.decode(out.squeeze(0).tolist())
+#
+#
 GPT2_small_config = {
     "vocab_size": 50257,  # Size of the vocabulary used by the model
     "context_length": 1024,  # Maximum length of input sequences
@@ -403,7 +407,8 @@ GPT2_small_config = {
     "qkv_bias": False,  # Whether to include bias terms in the query, key, and value projections
 }
 
-text = start_context
+# text = start_context
+#
 
 
 def token_to_ids(text, tokenizer: tiktoken.Encoding):
@@ -420,12 +425,12 @@ def ids_to_token(token_ids: torch.Tensor, tokenizer: tiktoken.Encoding):
     return tokenizer.decode(token_ids.squeeze(0).tolist())
 
 
-model = GPTModel_v2(GPT2_small_config)
-model.eval()
-res_text = generate_text_simple(
-    model,
-    idx=token_to_ids(text1, tokenizer),
-    max_new_token=10,
-    context_size=GPT2_small_config["context_length"],
-)
-print(ids_to_token(res_text, tokenizer))
+# model = GPTModel_v2(GPT2_small_config)
+# model.eval()
+# res_text = generate_text_simple(
+#     model,
+#     idx=token_to_ids(text1, tokenizer),
+#     max_new_token=10,
+#     context_size=GPT2_small_config["context_length"],
+# )
+# print(ids_to_token(res_text, tokenizer))

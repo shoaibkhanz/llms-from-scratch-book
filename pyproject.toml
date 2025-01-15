@@ -8,6 +8,7 @@ dependencies = [
     "better-exceptions>=0.3.3",
     "ipykernel>=6.29.5",
     "ipython>=8.28.0",
+    "jupyterlab-vim>=4.1.4",
     "jupyterlab>=4.2.5",
     "matplotlib>=3.9.2",
     "numpy>=2.1.2",

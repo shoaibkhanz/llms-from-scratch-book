@@ -6,23 +6,23 @@ import matplotlib.pyplot as plt
 import polars as pl
 import tiktoken
 
-inputs = torch.tensor(
-    [
-        [0.43, 0.15, 0.89],
-        [0.55, 0.87, 0.66],
-        [0.57, 0.85, 0.64],
-        [0.22, 0.58, 0.33],
-        [0.77, 0.25, 0.10],
-        [0.05, 0.80, 0.55],
-    ]
-)
-
-
-# create a sample batch manually
-batch = torch.stack((inputs, inputs), dim=0)
-print(batch)
-print(batch.shape)
-
+# inputs = torch.tensor(
+#     [
+#         [0.43, 0.15, 0.89],
+#         [0.55, 0.87, 0.66],
+#         [0.57, 0.85, 0.64],
+#         [0.22, 0.58, 0.33],
+#         [0.77, 0.25, 0.10],
+#         [0.05, 0.80, 0.55],
+#     ]
+# )
+#
+#
+# # create a sample batch manually
+# batch = torch.stack((inputs, inputs), dim=0)
+# print(batch)
+# print(batch.shape)
+#
 
 # class CausalAttention(nn.Module):
 #     def __init__(self, d_in, d_out, qkv_bias, context_length, dropout) -> None:
@@ -51,11 +51,12 @@ print(batch.shape)
 #         return context_vector
 
 
-print(inputs)
-print(inputs.shape)
-print(inputs.T.shape)
-print(inputs.transpose(0, 1))
-print(inputs.transpose(0, 1).shape)
+# print(inputs)
+# print(inputs.shape)
+# print(inputs.T.shape)
+# print(inputs.transpose(0, 1))
+# print(inputs.transpose(0, 1).shape)
+#
 
 
 class CausalAttention(nn.Module):
@@ -96,19 +97,20 @@ class CausalAttention(nn.Module):
         return context_vector
 
 
-torch.manual_seed(123)
-context_length = batch.shape[1]
-d_in = 3
-d_out = 2
-causal_attention = CausalAttention(d_in, d_out, context_length, dropout=0)
-
-
-context_vectors = causal_attention(batch)
-print(context_vectors.shape)
-print(context_vectors)
-
-# example how concatenate works
-torch.cat((inputs[:, 1], inputs[:, 2]))
+# torch.manual_seed(123)
+# context_length = batch.shape[1]
+# d_in = 3
+# d_out = 2
+# causal_attention = CausalAttention(d_in, d_out, context_length, dropout=0)
+#
+#
+# context_vectors = causal_attention(batch)
+# print(context_vectors.shape)
+# print(context_vectors)
+#
+# # example how concatenate works
+# torch.cat((inputs[:, 1], inputs[:, 2]))
+#
 
 
 class GPTDatasetV1(Dataset):
@@ -157,19 +159,20 @@ class MultiHeadAttentionWrapper(nn.Module):
         return torch.cat([head(x) for head in self.heads], dim=-1)
 
 
-print(batch.shape)  # shape is (2,6,3)
-
-torch.manual_seed(123)
-d_in = 3
-d_out = 2
-context_length = batch.shape[1]
-dropout = 0.0
-num_heads = 2
-mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
-context_vectors = mha(batch)
-print(context_vectors.shape)
-print(context_vectors)
-print(batch.shape)
+# print(batch.shape)  # shape is (2,6,3)
+#
+# torch.manual_seed(123)
+# d_in = 3
+# d_out = 2
+# context_length = batch.shape[1]
+# dropout = 0.0
+# num_heads = 2
+# mha = MultiHeadAttentionWrapper(d_in, d_out, context_length, dropout, num_heads)
+# context_vectors = mha(batch)
+# print(context_vectors.shape)
+# print(context_vectors)
+# print(batch.shape)
+#
 
 
 class MultiHeadAttention(nn.Module):
